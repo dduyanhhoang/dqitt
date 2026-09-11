@@ -26,5 +26,6 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "jupyterlab>=4.6.3",
     "pytest>=9.1.1",
 ]

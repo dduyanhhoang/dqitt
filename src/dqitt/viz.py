@@ -32,7 +32,7 @@ def conflict_graph(inst: Instance, path: Path, assignment: np.ndarray | None = N
     G.add_nodes_from(range(len(inst.sections)))
     colors = assignment if assignment is not None else "lightgray"
     fig, ax = plt.subplots(figsize=(5, 4))
-    nx.draw(G, nx.spring_layout(G, seed=0), ax=ax, with_labels=True, node_color=colors, cmap="Set2",
+    nx.draw(G, nx.spring_layout(G, seed=0), ax=ax, with_labels=True, node_color=colors, cmap="Set2" if assignment is not None else None,
             labels={i: f"{s}\n{sl}" for i, (s, sl) in enumerate(zip(inst.sections, inst.slots))}, font_size=7)
     fig.savefig(path, dpi=150)
     plt.close(fig)

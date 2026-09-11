@@ -16,14 +16,14 @@ The teacher quota constraint is **excluded**: it is not expressible as max-LINSA
 
 ```mermaid
 flowchart LR
-    D[(data/*/ *.csv<br/>Task, SlotConflict,<br/>InstructorSkill, InstructorSlot)] --> P[problem.py<br/>Instance → Linsat B, F_i over F_p<br/>brute force, code distance, ε_k]
-    P --> Q[dqi.py<br/>tridiagonal A^(m,ℓ,d) weights<br/>exact ideal state |P(f)⟩ in numpy]
-    P --> C[circuit.py<br/>PennyLane F_p circuit<br/>Dicke → local prep → Bᵀ → LUT decode → QFT_p]
-    Q --> V[viz.py<br/>histogram, conflict graph, circuit drawing]
+    D[("data/*/*.csv<br/>Task, SlotConflict,<br/>InstructorSkill, InstructorSlot")] --> P["problem.py<br/>Instance → Linsat B, F_i over F_p<br/>brute force, code distance, ε_k"]
+    P --> Q["dqi.py<br/>tridiagonal A^(m,ℓ,d) weights<br/>exact ideal state |P(f)⟩ in numpy"]
+    P --> C["circuit.py<br/>PennyLane F_p circuit<br/>Dicke → local prep → Bᵀ → LUT decode → QFT_p"]
+    Q --> V["viz.py<br/>histogram, conflict graph, circuit drawing"]
     C --> V
-    Q --> CLI[cli.py  `dqitt DATA --l L [--circuit]`]
+    Q --> CLI["cli.py — dqitt DATA --l L [--circuit]"]
     C --> CLI
-    CLI --> R[(reports/*.png)]
+    CLI --> R[("reports/*.png")]
 ```
 
 Two evaluation paths:
