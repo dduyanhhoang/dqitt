@@ -8,3 +8,4 @@ wheels/
 .pytest_cache/
 .claude/
 reports/
+.ipynb_checkpoints/
