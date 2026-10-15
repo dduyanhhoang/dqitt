@@ -71,18 +71,22 @@ def load(data_dir: str | Path, threshold: int = 5) -> Instance:
     return Instance(sections, slots, teachers, eligible, conflicts, _quota(d / "InstructorQuota.csv", teachers))
 
 
-def violations(inst: Instance, a: np.ndarray) -> int:
-    """Broken constraints of the original problem for assignment a (teacher index per section, -1 = none).
+def violations(inst: Instance, a: np.ndarray) -> np.ndarray | int:
+    """Broken constraints of the original problem for assignments a, shape (..., n_sections).
 
-    One per section without an eligible teacher, per conflicting pair on the same teacher,
-    and per teacher whose load is outside its quota.
+    a holds a teacher index per section, -1 = no teacher. Counts one per section without an
+    eligible teacher, per conflicting pair on the same teacher, per teacher outside its quota.
     """
-    v = sum(t < 0 or t not in E for t, E in zip(a, inst.eligible))
-    v += sum(a[s] == a[u] >= 0 for s, u in inst.conflicts)
+    k = len(inst.teachers)
+    elig = np.array([[t in E for t in range(k)] + [False] for E in inst.eligible])  # column -1 = none
+    v = (~elig[np.arange(len(inst.eligible)), a]).sum(axis=-1)
+    for s, u in inst.conflicts:
+        v = v + ((a[..., s] == a[..., u]) & (a[..., s] >= 0))
     if inst.quota:
-        load_ = np.bincount(a[a >= 0], minlength=len(inst.teachers))
-        v += sum(not lo <= c <= hi for c, (lo, hi) in zip(load_, inst.quota))
-    return int(v)
+        load_ = (a[..., None] == np.arange(k)).sum(axis=-2)
+        lo, hi = np.array(inst.quota).T
+        v = v + ((load_ < lo) | (load_ > hi)).sum(axis=-1)
+    return int(v) if np.ndim(v) == 0 else v
 
 
 def next_prime(k: int) -> int:
