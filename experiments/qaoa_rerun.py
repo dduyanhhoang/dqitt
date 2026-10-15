@@ -1,7 +1,7 @@
 """DQITT-005: re-run ttqaoa's QAOA (qmos_qaoa.solver.solve_qaoa, unchanged) on all 20 ensembles.
 
 Same settings as ttqaoa's params_by_depths.py (20 restarts, 20000 shots, COBYLA), depth p=1 only:
-deeper circuits take > 10 min per restart on this machine. Writes the best angles and the
+one p=2 restart ran over 9 min without finishing on this machine. Writes the best angles and the
 20000 measured bitstrings (as basis-state indices) per instance.
 
     OMP_NUM_THREADS=1 uv run --group baselines python experiments/qaoa_rerun.py
