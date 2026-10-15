@@ -24,13 +24,15 @@ def index_to_bits(i: np.ndarray, n: int) -> np.ndarray:
     return (np.asarray(i)[..., None] >> np.arange(n - 1, -1, -1)) & 1
 
 
-def bits_to_assignment(bits: np.ndarray, problem: TimetableProblem) -> np.ndarray:
-    """Teacher per section for bitstrings (..., n_qubits); -1 where a section has no or several teachers."""
+def bits_to_assignment(bits: np.ndarray, problem: TimetableProblem) -> tuple[np.ndarray, np.ndarray]:
+    """Teacher per section for bitstrings (..., n_qubits), -1 = none; and whether each bitstring is a
+    schedule at all (no section with two or more teachers)."""
     n_sec = len(problem.sections)
     onehot = np.zeros((*bits.shape[:-1], n_sec, len(problem.teachers)), int)
     for j, (t, s) in enumerate(problem.feasible_vars):
         onehot[..., s, t] = bits[..., j]
-    return np.where(onehot.sum(axis=-1) == 1, onehot.argmax(axis=-1), -1)
+    count = onehot.sum(axis=-1)
+    return np.where(count == 1, onehot.argmax(axis=-1), -1), (count <= 1).all(axis=-1)
 
 
 def qaoa_probs(problem: TimetableProblem, params: np.ndarray) -> np.ndarray:

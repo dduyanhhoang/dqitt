@@ -35,7 +35,8 @@ def row(d: Path) -> dict:
     problem = qubo(d)
     e = energies(problem)
     ground = np.flatnonzero(np.isclose(e, e.min()))
-    v_ground = violations(inst, bits_to_assignment(index_to_bits(ground, problem.n_qubits), problem))
+    a_ground, _ = bits_to_assignment(index_to_bits(ground, problem.n_qubits), problem)
+    v_ground = violations(inst, a_ground)
     return dict(
         instance=d.name, v_star=v_star, n_optimal=len(best), feasible=v_star == 0,
         cpsat_v=v_cp, cpsat_agrees=v_cp == v_star == violations(inst, a_cp), cpsat_seconds=round(t_cp, 3),

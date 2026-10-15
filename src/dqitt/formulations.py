@@ -55,7 +55,8 @@ def binary(
 
 
 def to_assignment(x: np.ndarray, pairs: list[tuple[int, int]], n_sections: int) -> np.ndarray | None:
-    """Teacher per section (-1 if the section has no variable), or None if x is not a one-hot 0/1 schedule."""
+    """Teacher per section (-1 = none), or None if x is not a 0/1 schedule (a value outside {0, 1},
+    or a section with two or more teachers)."""
     if not np.isin(x, (0, 1)).all():
         return None
     a = np.full(n_sections, -1)
@@ -63,5 +64,4 @@ def to_assignment(x: np.ndarray, pairs: list[tuple[int, int]], n_sections: int) 
     for (s, l), v in zip(pairs, x):
         if v:
             a[s], count[s] = l, count[s] + 1
-    has_var = np.isin(np.arange(n_sections), [s for s, _ in pairs])
-    return a if (count[has_var] == 1).all() else None
+    return a if (count <= 1).all() else None

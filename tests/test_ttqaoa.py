@@ -23,9 +23,16 @@ def test_bits_to_assignment_maps_ttqaoa_variable_order(problem):
     bits = np.zeros(problem.n_qubits, int)
     t, s = problem.feasible_vars[0]
     bits[0] = 1
-    a = bits_to_assignment(bits, problem)
+    a, valid = bits_to_assignment(bits, problem)
+    assert valid
     assert a[s] == t
     assert (np.delete(a, s) == -1).all()
+
+
+def test_bits_to_assignment_flags_sections_with_two_teachers(problem):
+    s = problem.feasible_vars[0][1]
+    bits = np.array([ss == s for _, ss in problem.feasible_vars], int)  # every teacher of section s
+    assert not bits_to_assignment(bits, problem)[1]
 
 
 def test_qaoa_probs_uniform_at_zero_angles(problem):

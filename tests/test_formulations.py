@@ -46,9 +46,10 @@ def test_binary_hard_scores_valid_schedule_full():
     assert lin.count(np.array([1, 0, 1])) == lin.m - 3  # conflict + both quotas broken
 
 
-def test_to_assignment_rejects_non_one_hot():
+def test_to_assignment_rejects_two_teachers_and_keeps_empty_sections():
     _, pairs = binary(TWO, quota="hard")
     assert to_assignment(np.array([0, 1, 1]), pairs, 2).tolist() == [1, 0]
+    assert to_assignment(np.array([0, 0, 1]), pairs, 2).tolist() == [-1, 0]
     assert to_assignment(np.array([1, 1, 1]), pairs, 2) is None
     assert to_assignment(np.array([0, 2, 1]), pairs, 2) is None  # value outside {0, 1}
 
