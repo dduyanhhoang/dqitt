@@ -9,6 +9,7 @@ distinct, the |P_k> are orthonormal and sum_i g~_i acts as the tridiagonal A^{(m
 
 from __future__ import annotations
 
+from itertools import combinations, product
 from math import comb, sqrt
 
 import numpy as np
@@ -79,3 +80,45 @@ def expected_satisfied(psi: np.ndarray, lin: Linsat, X: np.ndarray) -> float:
 def sample(psi: np.ndarray, X: np.ndarray, shots: int, rng: np.random.Generator) -> np.ndarray:
     idx = rng.choice(len(psi), size=shots, p=np.abs(psi) ** 2)
     return X[idx]
+
+
+def _row_stats(lin: Linsat) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """g~_i(v) for every row and value v in F_p, shape (m, p); and per-row mean, std of h_i."""
+    mean = lin.F.mean(axis=1)
+    std = np.sqrt(mean * (1 - mean))
+    return (lin.F - mean[:, None]) / std[:, None], mean, std
+
+
+def l1_weights(lin: Linsat) -> np.ndarray:
+    """Optimal (w_0, w_1) at l=1 without enumerating F_p^n.
+
+    Needs no two proportional rows (d >= 3): then |P_0>, |P_1> are orthonormal (Jordan et al.
+    Lemma 9.1, 2l < d) and <s> = w^T M w with
+        M00 = sum mu_i,  M01 = sum sigma_i / sqrt(m),  M11 = sum mu_i + (1/m) sum_l sigma_l T_l,
+    T_l = sum_{i,j} E[g~_l g~_i g~_j]: the i = j = l term plus ordered pairs i != j with
+    b_l = a b_i + c b_j (any other triple has independent factors and averages to 0).
+    """
+    g, mu, sigma = _row_stats(lin)
+    p, m = lin.p, lin.m
+    B = lin.B % p
+    T = (g**3).mean(axis=1)
+    by_row: dict[bytes, list[int]] = {}
+    for l, b in enumerate(B):
+        by_row.setdefault(b.tobytes(), []).append(l)
+    u = np.arange(p)
+    for i, j in combinations(range(m), 2):
+        for a, c in product(range(1, p), repeat=2):
+            for l in by_row.get(((a * B[i] + c * B[j]) % p).tobytes(), ()):
+                lin_comb = (a * u[:, None] + c * u[None, :]) % p
+                T[l] += 2 * (g[i][:, None] * g[j][None, :] * g[l][lin_comb]).mean()
+    off = sigma.sum() / sqrt(m)
+    M = np.array([[mu.sum(), off], [off, mu.sum() + (sigma * T).sum() / m]])
+    w = np.linalg.eigh(M)[1][:, -1]
+    return w * np.sign(w[0] or 1)
+
+
+def l1_probs(lin: Linsat, w: np.ndarray, X: np.ndarray) -> np.ndarray:
+    """Probability of each x in X (..., n) under the l=1 DQI state, valid under l1_weights' condition."""
+    g, _, _ = _row_stats(lin)
+    G = g[np.arange(lin.m), (X @ lin.B.T) % lin.p].sum(axis=-1)
+    return (w[0] + w[1] * G / sqrt(lin.m)) ** 2 / lin.p**lin.n

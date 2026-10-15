@@ -88,3 +88,21 @@ def test_n_wires_matches_circuit(tiny):
 
     psi, X, w = ideal_state(tiny, 1)
     assert DQICircuit(tiny, 1, w).n_wires == n_wires(tiny) == 24
+
+
+@pytest.mark.parametrize("which", ["mini", "inst_01", "binary-merged"])
+def test_l1_closed_form_matches_enumerated_ideal_state(mini, which):
+    from dqitt.dqi import l1_probs, l1_weights
+    from dqitt.formulations import binary
+    from dqitt.problem import Instance
+
+    two = Instance(["a", "b"], ["s", "s"], ["t0", "t1"], [{0, 1}, {0}], [(0, 1)], quota=[(0, 1), (1, 2)])
+    lin = {
+        "mini": lambda: mini,
+        "inst_01": lambda: build(load(paths.DATA / "ttqaoa" / "ensembles" / "inst_01")),
+        "binary-merged": lambda: binary(two, "hard", merge=True)[0],
+    }[which]()
+    psi, X, w = ideal_state(lin, 1)
+    w1 = l1_weights(lin)
+    assert np.allclose(w1, w)
+    assert np.allclose(l1_probs(lin, w1, X), np.abs(psi) ** 2)

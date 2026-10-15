@@ -31,3 +31,21 @@ def bits_to_assignment(bits: np.ndarray, problem: TimetableProblem) -> np.ndarra
     for j, (t, s) in enumerate(problem.feasible_vars):
         onehot[..., s, t] = bits[..., j]
     return np.where(onehot.sum(axis=-1) == 1, onehot.argmax(axis=-1), -1)
+
+
+def qaoa_probs(problem: TimetableProblem, params: np.ndarray) -> np.ndarray:
+    """Exact output distribution of ttqaoa's QAOA circuit (qmos_qaoa.solver) at angles params, shape (depth, 2)."""
+    n = problem.n_qubits
+    h = qml.simplify(problem.cost_h)
+
+    @qml.qnode(qml.device("lightning.qubit", wires=n))
+    def circuit():
+        for i in range(n):
+            qml.Hadamard(wires=i)
+        for gamma, beta in params:
+            qml.templates.TrotterProduct(h, gamma, order=1, n=1)
+            for i in range(n):
+                qml.RX(2 * beta, wires=i)
+        return qml.probs(wires=range(n))
+
+    return np.asarray(circuit())

@@ -26,3 +26,11 @@ def test_bits_to_assignment_maps_ttqaoa_variable_order(problem):
     a = bits_to_assignment(bits, problem)
     assert a[s] == t
     assert (np.delete(a, s) == -1).all()
+
+
+def test_qaoa_probs_uniform_at_zero_angles(problem):
+    from dqitt.ttqaoa import qaoa_probs
+
+    pr = qaoa_probs(problem, np.zeros((1, 2)))
+    assert pr.shape == (2**problem.n_qubits,)
+    assert np.allclose(pr, 2.0**-problem.n_qubits)
