@@ -1,0 +1,13 @@
+m=5 n=4 p=2 l=2
+optimum 4/5, optimal x: ['0011', '1011', '1100', '1101', '1111']
+code distance d = 5
+decoder failure eps_0..2 = [0.0, 0.0, 0.0]
+lookup table rows = 15
+row 0 Fourier coefficients c_0(e) = [0j, (-1-0j)]
+tridiagonal weights w = [0.4385, 0.7071, 0.5547], predicted <s>/m = 0.8606
+exact weights w = [0.559, 0.75, 0.3536], exact <s>/m = 0.8000
+tutorial weights in the exact state: <s>/m = 0.7682, P(optimal) = 0.9440
+random <s>/m = 0.5000
+P(optimal): random 0.3125, ideal DQI 1.0000, circuit 1.0000
+circuit qubits = 14, circuit == ideal: True
+P(x) per x (ideal): 0000:0.0000, 0001:0.0000, 0010:0.0000, 0011:0.2000, 0100:0.0000, 0101:0.0000, 0110:0.0000, 0111:0.0000, 1000:0.0000, 1001:0.0000, 1010:0.0000, 1011:0.2000, 1100:0.2000, 1101:0.2000, 1110:0.0000, 1111:0.2000
