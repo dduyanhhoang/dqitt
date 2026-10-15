@@ -1,0 +1,16 @@
+eligible [[0, 1], [1, 2], [0, 1, 2], [0, 2]], conflicts [(0, 1), (0, 2), (1, 2)]
+p=3 n=4 m=6
+B = [[1, 2, 0, 0], [1, 0, 2, 0], [0, 1, 2, 0], [1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
+F = [[1, 2], [1, 2], [1, 2], [0, 1], [1, 2], [0, 2]]
+optimum 6/6 at 6 schedules: [(0, 1, 2, 0), (0, 1, 2, 2), (0, 2, 1, 0), (0, 2, 1, 2), (1, 2, 0, 0), (1, 2, 0, 2)]
+code distance d = 3
+eps_0..2 = [0.0, 0.0, 0.5333]
+random <s>/m = 0.6667, P(optimal) = 0.0741
+conflict row 0 c(e) = [0j, (-0.7071-0j), (-0.7071-0j)]
+eligibility row 3 c(e) = [0j, (0.3536-0.6124j), (0.3536+0.6124j)]
+l=1: w = [0.7783, 0.6279], LUT rows = 12, qubits = 26
+l=1: ideal <s>/m = 0.8219, P(optimal) = 0.2579
+l=1: circuit <s>/m = 0.8219, P(optimal) = 0.2579, circuit == ideal: True
+l=2: w = [0.5049, 0.7094, 0.4917], LUT rows = 48, qubits = 26
+l=2: ideal <s>/m = 0.9161, P(optimal) = 0.5796
+l=2: circuit <s>/m = 0.8505, P(optimal) = 0.4471, circuit == ideal: False
