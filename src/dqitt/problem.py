@@ -25,6 +25,7 @@ class Instance:
     teachers: list[str]
     eligible: list[set[int]]  # per section: eligible teacher indices
     conflicts: list[tuple[int, int]]  # section pairs sharing a time slot
+    quota: list[tuple[int, int]] | None = None  # per teacher (min, max) sections
 
 
 def _matrix(path: Path) -> tuple[list[str], list[str], np.ndarray]:
@@ -33,6 +34,18 @@ def _matrix(path: Path) -> tuple[list[str], list[str], np.ndarray]:
     idx = [r[0] for r in rows[1:]]
     m = np.array([[int(float(v or 0)) for v in r[1:]] for r in rows[1:]])
     return idx, cols, m
+
+
+def _column(m: np.ndarray, cols: list[str], key: str) -> np.ndarray:
+    """Column `key` of m, zeros when absent (ttqaoa treats a missing slot/subject as level 0)."""
+    return m[:, cols.index(key)] if key in cols else np.zeros(len(m), int)
+
+
+def _quota(path: Path, teachers: list[str]) -> list[tuple[int, int]] | None:
+    if not path.exists():
+        return None
+    rows = {r[""].strip(): r for r in csv.DictReader(path.open())}
+    return [(int(rows[t]["Min quota"]), int(rows[t]["Max quota"])) for t in teachers]
 
 
 def load(data_dir: str | Path, threshold: int = 5) -> Instance:
@@ -46,12 +59,7 @@ def load(data_dir: str | Path, threshold: int = 5) -> Instance:
     conf_idx, conf_cols, conf = _matrix(d / "SlotConflict.csv")
 
     eligible = [
-        {
-            t
-            for t in range(len(teachers))
-            if skill[t, skill_cols.index(subj)] >= threshold
-            and avail[t, slot_cols.index(slot)] >= threshold
-        }
+        set(np.flatnonzero((_column(skill, skill_cols, subj) >= threshold) & (_column(avail, slot_cols, slot) >= threshold)).tolist())
         for subj, slot in zip(subjects, slots)
     ]
     conflicts = [
@@ -60,7 +68,21 @@ def load(data_dir: str | Path, threshold: int = 5) -> Instance:
         if conf[conf_idx.index(slots[a]), conf_cols.index(slots[b])]
     ]
     logger.info(f"{d}: {len(sections)} sections, {len(teachers)} teachers, {len(conflicts)} conflicts")
-    return Instance(sections, slots, teachers, eligible, conflicts)
+    return Instance(sections, slots, teachers, eligible, conflicts, _quota(d / "InstructorQuota.csv", teachers))
+
+
+def violations(inst: Instance, a: np.ndarray) -> int:
+    """Broken constraints of the original problem for assignment a (teacher index per section, -1 = none).
+
+    One per section without an eligible teacher, per conflicting pair on the same teacher,
+    and per teacher whose load is outside its quota.
+    """
+    v = sum(t < 0 or t not in E for t, E in zip(a, inst.eligible))
+    v += sum(a[s] == a[u] >= 0 for s, u in inst.conflicts)
+    if inst.quota:
+        load_ = np.bincount(a[a >= 0], minlength=len(inst.teachers))
+        v += sum(not lo <= c <= hi for c, (lo, hi) in zip(load_, inst.quota))
+    return int(v)
 
 
 def next_prime(k: int) -> int:
