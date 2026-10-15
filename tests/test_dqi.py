@@ -1,11 +1,12 @@
 import numpy as np
 import pytest
 
+from dqitt import paths
 from dqitt.circuit import DQICircuit
 from dqitt.dqi import all_x, expected_satisfied, ideal_state, theory_weights
 from dqitt.problem import brute_force, build, code_distance, decoder_failure, load
 
-DATA = "data"
+DATA = paths.DATA / "dqitt"
 
 
 @pytest.fixture(scope="module")

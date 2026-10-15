@@ -12,6 +12,7 @@ dependencies = [
     "matplotlib>=3.11.1",
     "networkx>=3.6.1",
     "numpy>=2.5.3",
+    "ortools>=9.15.6755",
     "pennylane>=0.45.1",
     "pennylane-lightning>=0.45.0",
     "scipy>=1.18.1",
@@ -25,7 +26,13 @@ requires = ["uv_build>=0.12.10,<0.13.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
+baselines = [
+    "qmos-qaoa",
+]
 dev = [
     "jupyterlab>=4.6.3",
     "pytest>=9.1.1",
 ]
+
+[tool.uv.sources]
+qmos-qaoa = { git = "https://github.com/QMOS-Lab/ttqaoa", rev = "3b494c155e70381a1ce53ef18c64606622c0f7b4" }
