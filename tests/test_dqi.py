@@ -81,3 +81,10 @@ def test_circuit_f2_case():
     psi, X, w = ideal_state(lin, 1)
     pr = DQICircuit(lin, 1, w).probs_x()
     assert np.allclose(pr, np.abs(psi) ** 2, atol=1e-10)
+
+
+def test_n_wires_matches_circuit(tiny):
+    from dqitt.circuit import n_wires
+
+    psi, X, w = ideal_state(tiny, 1)
+    assert DQICircuit(tiny, 1, w).n_wires == n_wires(tiny) == 24

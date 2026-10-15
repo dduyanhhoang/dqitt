@@ -19,8 +19,15 @@ import numpy as np
 from .problem import Instance, Linsat, next_prime
 
 
-def binary(inst: Instance, quota: Literal["hard", "soft", "none"] = "hard") -> tuple[Linsat, list[tuple[int, int]]]:
-    """Returns the LINSAT instance and the (section, teacher) pair behind each column."""
+def binary(
+    inst: Instance, quota: Literal["hard", "soft", "none"] = "hard", merge: bool = False
+) -> tuple[Linsat, list[tuple[int, int]]]:
+    """Returns the LINSAT instance and the (section, teacher) pair behind each column.
+
+    Rows with equal coefficients form a weight-2 dual codeword (d = 2, so DQI cannot correct
+    even one error). merge=True replaces each such group by one row whose allowed set is the
+    intersection: the set of schedules satisfying every row is unchanged, the row count is not.
+    """
     pairs = [(s, l) for s, E in enumerate(inst.eligible) for l in sorted(E)]
     col = {pr: j for j, pr in enumerate(pairs)}
     rows: list[tuple[list[int], set[int]]] = [([j], {0, 1}) for j in range(len(pairs))]
@@ -31,8 +38,15 @@ def binary(inst: Instance, quota: Literal["hard", "soft", "none"] = "hard") -> t
         rows += [(c, set(range(lo, hi + 1))) for c, (lo, hi) in zip(load, inst.quota) if c]
     elif quota == "soft":
         rows += [(c, {k}) for c in load if c for k in range(len(c) + 1)]
+    if merge:
+        if quota == "soft":
+            raise ValueError("soft quota rows share coefficients by design; merging would erase them")
+        merged: dict[tuple[int, ...], set[int]] = {}
+        for c, vals in rows:
+            merged[tuple(c)] = merged.get(tuple(c), vals) & vals
+        rows = [(list(c), vals) for c, vals in merged.items() if vals]  # empty = never satisfiable, constant
 
-    p = next_prime(max(len(c) for c, _ in rows) + 1)
+    p =next_prime(max(len(c) for c, _ in rows) + 1)
     B = np.zeros((len(rows), len(pairs)), int)
     for i, (c, _) in enumerate(rows):
         B[i, c] = 1

@@ -83,6 +83,11 @@ def lookup_table(lin: Linsat, l: int) -> list[tuple[np.ndarray, np.ndarray]]:
     return list(table.values())
 
 
+def n_wires(lin: Linsat) -> int:
+    """Qubits of DQICircuit: m flags + ceil(log2 p) per error (m) and syndrome (n) symbol."""
+    return lin.m + ceil(log2(lin.p)) * (lin.m + lin.n)
+
+
 def _bits(v: int, q: int) -> list[int]:
     return [int(b) for b in format(v, f"0{q}b")]
 
@@ -96,7 +101,7 @@ class DQICircuit:
         self.err = [list(range(m + i * q, m + (i + 1) * q)) for i in range(m)]
         base = m + m * q
         self.syn = [list(range(base + j * q, base + (j + 1) * q)) for j in range(n)]
-        self.n_wires = base + n * q
+        self.n_wires = n_wires(lin)
         self.table = lookup_table(lin, l)
         self.dev = qml.device(device, wires=self.n_wires, shots=shots)
 

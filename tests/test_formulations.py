@@ -61,3 +61,16 @@ def test_binary_hard_distance_is_three(inst01):
 def test_binary_soft_quota_repeats_rows_so_distance_is_two(inst01):
     lin, _ = binary(inst01, quota="soft")
     assert code_distance(lin, max_w=2) == 2
+
+
+def test_merge_intersects_rows_with_equal_coefficients():
+    lin, _ = binary(TWO, quota="hard", merge=True)
+    # equal coefficients: t0 quota = conflict (x0+x2), t1 quota = domain x1, b's one-hot = domain x2
+    assert lin.m == 8 - 3
+    assert lin.count(np.array([0, 1, 1])) == lin.m
+    assert code_distance(lin, max_w=2) is None
+
+
+def test_merge_restores_distance_three():
+    lin, _ = binary(load(ENS / "inst_03"), quota="hard", merge=True)
+    assert code_distance(lin, max_w=3) == 3
