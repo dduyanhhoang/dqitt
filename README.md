@@ -40,6 +40,7 @@ notes/             brief.md (theory), literature.md (cited facts)
 Not in the repo. `$DQITT_DATA` (default `/home/al/Data`) holds:
 
 - `dqitt/{tiny,mini,note001}`: hand-made instances (no quota).
+- `dqitt/fpt_toy/{day,am}`: an FPT-style Monday built from the ttqaoa toy set by the notebook (part 2).
 - `ttqaoa/`: ttqaoa `data/raw` and `data/processed` at commit `3b494c1` (see `SOURCE.md`).
 
 ## Run
