@@ -106,3 +106,16 @@ def test_l1_closed_form_matches_enumerated_ideal_state(mini, which):
     w1 = l1_weights(lin)
     assert np.allclose(w1, w)
     assert np.allclose(l1_probs(lin, w1, X), np.abs(psi) ** 2)
+
+
+def test_error_register_weights_follow_w_after_syndrome(tiny):
+    psi, X, w = ideal_state(tiny, 1)
+    err = DQICircuit(tiny, 1, w).register_probs("error", upto="syndrome")
+    weight = (np.indices(err.shape) != 0).sum(axis=0)
+    assert np.allclose([err[weight == k].sum() for k in (0, 1)], w**2)
+
+
+def test_decode_clears_error_register_at_l1(tiny):
+    psi, X, w = ideal_state(tiny, 1)
+    err = DQICircuit(tiny, 1, w).register_probs("error", upto="decode")
+    assert np.isclose(err.flat[0], 1)

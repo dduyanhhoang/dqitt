@@ -77,11 +77,6 @@ def expected_satisfied(psi: np.ndarray, lin: Linsat, X: np.ndarray) -> float:
     return float((np.abs(psi) ** 2 * lin.count(X)).sum())
 
 
-def sample(psi: np.ndarray, X: np.ndarray, shots: int, rng: np.random.Generator) -> np.ndarray:
-    idx = rng.choice(len(psi), size=shots, p=np.abs(psi) ** 2)
-    return X[idx]
-
-
 def _row_stats(lin: Linsat) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """g~_i(v) for every row and value v in F_p, shape (m, p); and per-row mean, std of h_i."""
     mean = lin.F.mean(axis=1)
@@ -119,6 +114,5 @@ def l1_weights(lin: Linsat) -> np.ndarray:
 
 def l1_probs(lin: Linsat, w: np.ndarray, X: np.ndarray) -> np.ndarray:
     """Probability of each x in X (..., n) under the l=1 DQI state, valid under l1_weights' condition."""
-    g, _, _ = _row_stats(lin)
-    G = g[np.arange(lin.m), (X @ lin.B.T) % lin.p].sum(axis=-1)
+    G = normalized_rows(lin, X).sum(axis=-1)
     return (w[0] + w[1] * G / sqrt(lin.m)) ** 2 / lin.p**lin.n

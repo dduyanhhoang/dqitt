@@ -1,12 +1,11 @@
 """DQI circuit over F_p (PennyLane). Each F_p symbol uses q = ceil(log2 p) qubits.
 
-Registers: flags (m) | error (m symbols) | syndrome (n symbols).
-  1. flags <- sum_k w_k |Dicke_{m,k}>
-  2. flag_i controls: error_i <- sum_{e!=0} c_i(e) |e>,  c_i = Fourier coeffs of g~_i
-  3. uncompute flags (flag_i ^= [error_i != 0])
-  4. syndrome <- B^T error   (controlled modular additions)
-  5. decode: lookup table syndrome -> min-weight error, subtract it from error register
-  6. QFT_p on every syndrome symbol, measure -> x
+Registers: flags (m) | error (m symbols) | syndrome (n symbols). Stages (STAGES, run in order):
+  dicke     flags <- sum_k w_k |Dicke_{m,k}>
+  load      flag_i controls error_i <- sum_{e!=0} c_i(e) |e> (c_i = Fourier coeffs of g~_i), then flags uncomputed
+  syndrome  syndrome <- B^T error   (controlled modular additions)
+  decode    lookup table syndrome -> min-weight error, subtracted from the error register
+  qft       QFT_p on every syndrome symbol; measuring gives x
 Only feasible for tiny instances (m + q(m+n) qubits); the LUT has sum_k C(m,k)(p-1)^k rows.
 """
 
@@ -88,6 +87,9 @@ def n_wires(lin: Linsat) -> int:
     return lin.m + ceil(log2(lin.p)) * (lin.m + lin.n)
 
 
+STAGES = ("dicke", "load", "syndrome", "decode", "qft")
+
+
 def _bits(v: int, q: int) -> list[int]:
     return [int(b) for b in format(v, f"0{q}b")]
 
@@ -105,54 +107,54 @@ class DQICircuit:
         self.table = lookup_table(lin, l)
         self.dev = qml.device(device, wires=self.n_wires, shots=shots)
 
-    def ops(self) -> None:
-        lin, p, q = self.lin, self.lin.p, self.q
-        qml.StatePrep(dicke_mixture(lin.m, self.w), wires=self.flags)
-        for i in range(lin.m):
-            qml.ctrl(qml.QubitUnitary, self.flags[i])(_local_prep(row_coeffs(lin, i), q), wires=self.err[i])
+    def _dicke(self) -> None:
+        qml.StatePrep(dicke_mixture(self.lin.m, self.w), wires=self.flags)
+
+    def _load(self) -> None:
+        """Flag i controls error_i <- sum_e c_i(e)|e>, then the flag is uncomputed."""
+        for i in range(self.lin.m):
+            qml.ctrl(qml.QubitUnitary, self.flags[i])(_local_prep(row_coeffs(self.lin, i), self.q), wires=self.err[i])
             qml.X(self.flags[i])
-            qml.ctrl(qml.X, self.err[i], control_values=[0] * q)(self.flags[i])
-        for i in range(lin.m):
-            for j in range(lin.n):
-                if c := int(lin.B[i, j]):
-                    qml.QubitUnitary(_perm(p, q, lambda e, s, c=c: (s + c * e) % p), wires=self.err[i] + self.syn[j])
+            qml.ctrl(qml.X, self.err[i], control_values=[0] * self.q)(self.flags[i])
+
+    def _syndrome(self) -> None:
+        p, q = self.lin.p, self.q
+        for i, j in zip(*np.nonzero(self.lin.B)):
+            c = int(self.lin.B[i, j])
+            qml.QubitUnitary(_perm(p, q, lambda e, s, c=c: (s + c * e) % p), wires=self.err[i] + self.syn[j])
+
+    def _decode(self) -> None:
+        p, q = self.lin.p, self.q
         syn_wires = sum(self.syn, [])
         for s, e in self.table:
             ctrl_vals = sum((_bits(int(v), q) for v in s), [])
             for i in np.flatnonzero(e):
                 qml.ctrl(qml.QubitUnitary, syn_wires, control_values=ctrl_vals)(_shift(p, q, -int(e[i])), wires=self.err[i])
-        for j in range(lin.n):
-            qml.QubitUnitary(qft_p(p, q), wires=self.syn[j])
 
-    def state(self) -> np.ndarray:
-        """Full statevector (default.qubit / lightning.qubit, shots=None)."""
+    def _qft(self) -> None:
+        for j in range(self.lin.n):
+            qml.QubitUnitary(qft_p(self.lin.p, self.q), wires=self.syn[j])
+
+    def ops(self, upto: str = "qft") -> None:
+        for stage in STAGES[: STAGES.index(upto) + 1]:
+            getattr(self, f"_{stage}")()
+
+    def register_probs(self, register: str, upto: str = "qft") -> np.ndarray:
+        """Distribution of one register after stage `upto`.
+
+        register: "flags" -> shape (2,)*m; "error" -> (p,)*m; "syndrome" -> (p,)*n (one axis per F_p symbol).
+        """
+        cells = {"flags": [[w] for w in self.flags], "error": self.err, "syndrome": self.syn}[register]
 
         @qml.qnode(self.dev)
         def f():
-            self.ops()
-            return qml.state()
+            self.ops(upto)
+            return qml.probs(wires=sum(cells, []))
 
-        return np.asarray(f())
+        size = len(cells[0])
+        pr = np.asarray(f()).reshape([2**size] * len(cells))
+        return pr if register == "flags" else pr[np.ix_(*[range(self.lin.p)] * len(cells))]
 
     def probs_x(self) -> np.ndarray:
-        """Marginal probability of each x in F_p^n (row index = base-p integer of x)."""
-        p, q, n = self.lin.p, self.q, self.lin.n
-        pr = np.abs(self.state()) ** 2
-        pr = pr.reshape(-1, *([2**q] * n)).sum(axis=0)  # trace out flags + error
-        return pr[tuple(np.ix_(*([range(p)] * n)))].reshape(p**n)
-
-    def counts(self) -> dict[str, int]:
-        @qml.qnode(self.dev)
-        def f():
-            self.ops()
-            return qml.counts(wires=sum(self.syn, []))
-
-        return f()
-
-    def draw(self, **kw):
-        @qml.qnode(self.dev)
-        def f():
-            self.ops()
-            return qml.probs(wires=sum(self.syn, []))
-
-        return qml.draw_mpl(f, **kw)()
+        """Output distribution over x in F_p^n (row index = base-p integer of x)."""
+        return self.register_probs("syndrome").reshape(self.lin.p**self.lin.n)
