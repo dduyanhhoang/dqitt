@@ -29,7 +29,7 @@ class Instance:
 
 
 def _matrix(path: Path) -> tuple[list[str], list[str], np.ndarray]:
-    rows = list(csv.reader(path.open()))
+    rows = list(csv.reader(path.read_text().splitlines()))
     cols = rows[0][1:]
     idx = [r[0] for r in rows[1:]]
     m = np.array([[int(float(v or 0)) for v in r[1:]] for r in rows[1:]])
@@ -44,13 +44,13 @@ def _column(m: np.ndarray, cols: list[str], key: str) -> np.ndarray:
 def _quota(path: Path, teachers: list[str]) -> list[tuple[int, int]] | None:
     if not path.exists():
         return None
-    rows = {r[""].strip(): r for r in csv.DictReader(path.open())}
+    rows = {r[""].strip(): r for r in csv.DictReader(path.read_text().splitlines())}
     return [(int(rows[t]["Min quota"]), int(rows[t]["Max quota"])) for t in teachers]
 
 
 def load(data_dir: str | Path, threshold: int = 5) -> Instance:
     d = Path(data_dir)
-    tasks = list(csv.DictReader(d.joinpath("Task.csv").open()))
+    tasks = list(csv.DictReader(d.joinpath("Task.csv").read_text().splitlines()))
     sections = [t["Class"].strip() for t in tasks]
     slots = [t["Slot"].strip() for t in tasks]
     subjects = [t["Subject"].strip() for t in tasks]
