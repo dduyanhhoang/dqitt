@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from copy import copy
 from pathlib import Path
 
 import numpy as np
@@ -10,8 +11,9 @@ from qmos_qaoa.data import load_local_data
 from qmos_qaoa.model import TimetableProblem
 
 
-def qubo(data_dir: str | Path) -> TimetableProblem:
-    return TimetableProblem(load_local_data(data_dir))
+def qubo(data_dir: str | Path, **weights: float) -> TimetableProblem:
+    """ttqaoa's QUBO; weights are TimetableProblem's w_section, w_conflict, w_quota (defaults 3, 2, 1)."""
+    return TimetableProblem(load_local_data(data_dir), **weights)
 
 
 def energies(problem: TimetableProblem) -> np.ndarray:
@@ -51,3 +53,35 @@ def qaoa_probs(problem: TimetableProblem, params: np.ndarray) -> np.ndarray:
         return qml.probs(wires=range(n))
 
     return np.asarray(circuit())
+
+
+def exact_qubo(problem: TimetableProblem) -> qml.operation.Operator:
+    """QUBO whose energy on a schedule is its number of broken eligibility/conflict constraints (no quota).
+
+    sum_s (sum_t x_ts - 1)^2 + sum_{t, conflicting s < s'} x_ts x_ts'. Unlike ttqaoa's (x_ts + x_ts')^2
+    conflict term, a conflict costs nothing unless both sections get teacher t.
+    """
+
+    def proj(i: int) -> qml.operation.Operator:
+        return (1 - qml.PauliZ(i)) / 2
+
+    terms = []
+    for s in problem.sections:
+        idx = [j for j, (_, ss) in enumerate(problem.feasible_vars) if ss == s]
+        if idx:
+            terms.append((sum(proj(i) for i in idx) - 1) ** 2)
+    conflict = problem.slot_conflict
+    for t in range(len(problem.teachers)):
+        mine = [(problem.task_list[s]["Slot"], j) for j, (tt, s) in enumerate(problem.feasible_vars) if tt == t]
+        for a, (slot1, i) in enumerate(mine):
+            for slot2, j in mine[a + 1 :]:
+                if slot1 in conflict.index and slot2 in conflict.columns and conflict.at[slot1, slot2] == 1:
+                    terms.append(proj(i) @ proj(j))
+    return qml.simplify(sum(terms))
+
+
+def with_cost(problem: TimetableProblem, cost_h: qml.operation.Operator) -> TimetableProblem:
+    """Copy of problem with another cost Hamiltonian (same variables), usable by solve_qaoa and qaoa_probs."""
+    other = copy(problem)
+    other.cost_h = cost_h
+    return other

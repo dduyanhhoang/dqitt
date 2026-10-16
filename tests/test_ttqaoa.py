@@ -4,7 +4,7 @@ import pytest
 from dqitt import paths
 
 pytest.importorskip("qmos_qaoa")
-from dqitt.ttqaoa import bits_to_assignment, energies, qubo  # noqa: E402
+from dqitt.ttqaoa import bits_to_assignment, energies, index_to_bits, qubo  # noqa: E402
 
 INST01 = paths.DATA / "ttqaoa" / "ensembles" / "inst_01"
 
@@ -41,3 +41,15 @@ def test_qaoa_probs_uniform_at_zero_angles(problem):
     pr = qaoa_probs(problem, np.zeros((1, 2)))
     assert pr.shape == (2**problem.n_qubits,)
     assert np.allclose(pr, 2.0**-problem.n_qubits)
+
+
+def test_exact_qubo_energy_counts_broken_constraints_without_quota(problem):
+    from dataclasses import replace
+
+    from dqitt.problem import load, violations
+    from dqitt.ttqaoa import exact_qubo, with_cost
+
+    inst = replace(load(INST01), quota=None)
+    e = energies(with_cost(problem, exact_qubo(problem)))
+    a, valid = bits_to_assignment(index_to_bits(np.arange(2**problem.n_qubits), problem.n_qubits), problem)
+    assert np.allclose(e[valid], violations(inst, a[valid]))
