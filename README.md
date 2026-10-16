@@ -24,11 +24,12 @@ src/dqitt/
   problem.py       CSV loading, teacher-index LINSAT, violations, brute force, code distance, ε_k
   formulations.py  binary x_{s,l} encodings with quota
   dqi.py           ideal DQI state (enumeration), closed-form l=1 state for large p^n
-  circuit.py       PennyLane F_p circuit (m + ⌈log₂p⌉(m+n) qubits, lookup-table decoder)
+  circuit.py       PennyLane F_p circuit (m + ⌈log₂p⌉(m+n) qubits, lookup-table decoder),
+                   run stage by stage: dicke, load, syndrome, decode, qft
   classical.py     exact optimum, CP-SAT model, replica of ttqaoa's notebook CP-SAT model
   ttqaoa.py        adapter to ttqaoa's QUBO/QAOA (dependency group `baselines`)
   metrics.py       shots needed to see an optimal schedule
-  cli.py, viz.py   single-instance run and plots
+notebooks/         dqi_end_to_end.ipynb: data -> formulation -> each DQI stage -> results
 experiments/       one script per study, each writes to results/<study>/
 results/           CSV outputs + README per study
 notes/             brief.md (theory), literature.md (cited facts)
@@ -46,7 +47,7 @@ Not in the repo. `$DQITT_DATA` (default `/home/al/Data`) holds:
 ```bash
 uv sync --all-groups
 uv run pytest
-uv run dqitt $DQITT_DATA/dqitt/mini --l 2                      # ideal DQI on one instance
+uv run jupyter nbconvert --to notebook --execute --inplace notebooks/dqi_end_to_end.ipynb   # ~2 min
 uv run --group baselines python experiments/formulation_structure.py
 uv run --group baselines python experiments/classical_reference.py
 OMP_NUM_THREADS=1 uv run --group baselines python experiments/qaoa_rerun.py   # hours
